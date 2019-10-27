@@ -2,6 +2,7 @@ package com.sgallego.aia.cercaWiki;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -35,28 +36,40 @@ public class CercaWiki
 	static int numErrores = 0;
 	static int cambioActual = 0;
     
-    public static void main( String[] args )
+    public static void main( String[] args ) throws Exception
     {
         System.out.println( "Mision 1 - Cerca Wiki" );
         
         //Variables
         ArrayList nombresList = null;
         ArrayList resultadoList = new ArrayList();
-        String urlFicheroIn = "C:\\Users\\sergi.gallego\\Documents\\Personal\\cercaWiki\\first10000.txt";
-        String urlFicheroOut = "C:\\Users\\sergi.gallego\\Documents\\Personal\\cercaWiki\\salida_first10000.csv";
         String urlWiki = "https://en.wikipedia.org/wiki/";
-        String anyModificacion = "2019"; 
+        String anyModificacion = "2019";
+        //Fichero entrada
+        String urlFicheroIn = args[0];
+        if (urlFicheroIn != null && !urlFicheroIn.equals(""))
+			System.out.println( "Fichero entrada: " + urlFicheroIn );
+		else
+			throw new FileNotFoundException("ERROR: se tiene que especificar fichero entrada");
+        //Fichero salida
+        String urlFicheroOut = args[1];
+		if (urlFicheroOut != null && !urlFicheroOut.equals(""))
+			System.out.println( "Fichero salida: " + urlFicheroIn );
+		else
+			throw new FileNotFoundException("ERROR: se tiene que especificar fichero salida");
+		
+              
                 
-        //Proceso
+        //PROCESO
         //Carga nombres desde fichero
         nombresList = cargaNombres( urlFicheroIn );
         
-        //Busca info en wiki de cada nombre, descartando cabecera empieza por 1
-        for (int i=1; i<20; i++) {//nombresList.size(); i++) {
-        	resultadoList.add(buscaInfoWiki(urlWiki, (String)nombresList.get(i), anyModificacion ));
+        //Busca info en wiki de cada nombre, descartando cabecera empiezo por 1
+        for (int i=1; i<nombresList.size(); i++) {//for (int i=1; i<20; i++)
+        	resultadoList.add( buscaInfoWiki(urlWiki, (String)nombresList.get(i), anyModificacion ));
         }
-        System.out.println("Num resultados: " + resultadoList.size());
-        //Vuelca resultados
+        
+        //Vuelca resultado en urlFicheroOut
         guardaResultado( urlFicheroOut, resultadoList, nombresList.size() );
          
     }
@@ -68,7 +81,7 @@ public class CercaWiki
 	 * @param resultadoList ArrayList con los resultados almacenados
 	 * @param size número total de nombres buscados
 	 */
-    public static void guardaResultado(String urlFicheroOut, ArrayList resultadoList, int size) {
+    public static void guardaResultado(String urlFicheroOut, ArrayList resultadoList, int size) throws IOException {
     	ArrayList nombresList = new ArrayList();
 		FileWriter flwriter = null;
 		try {
@@ -82,7 +95,6 @@ public class CercaWiki
 			for (int i=0; i<resultadoList.size();i++) {
 				//Registro i
 				bfwriter.write( resultadoList.get(i) + "\n" );
-				System.out.println("\nREGISTREEEEEE"+ i );
 			}
 			//Resumen
 			bfwriter.write( "\nFIN PROCESO\n" );
@@ -97,7 +109,7 @@ public class CercaWiki
 			System.out.println("Archivo creado y cerrado");
 	        
 		} catch (IOException e) {
-			System.out.println("Error al en fichero salida" + e);
+			throw new IOException("ERROR: se tiene que especificar fichero entrada" + e);
 		}
 		finally {
 			if (flwriter != null) {
@@ -122,8 +134,8 @@ public class CercaWiki
 	 * @param año a comparar para cada página para saber si es el de la modificación
 	 * @return ArrayList con los resultados de la búqueda
 	 */
-    public static String buscaInfoWiki( String wikiConsulta, String nombre, String anyModificacion ) {
-		String resultado = "";
+    public static ArrayList buscaInfoWiki( String wikiConsulta, String nombre, String anyModificacion ) {
+		ArrayList resultado = new ArrayList();
 		Document page = null;
 		try {
 			//Conexión con la página
@@ -148,13 +160,11 @@ public class CercaWiki
 			String strModificacion = strLi.substring(posicioIni+28, posicioIni+58);
 			//Posición de la coma final del año
 			int posicioComa = strModificacion.lastIndexOf(",");
-			//System.out.println( strLi );
-			//System.out.println( strModificacion +"\n" );
 			String anyo = strModificacion.substring(posicioComa-4, posicioComa);
 			
+			System.out.println( "Nombre: " +nombre+ " ----Titiulo: " +titulo+ " ----Año modif: " +anyo );
 			//Se monta el resultado de la búsqueda
-			resultado = wikiConsulta + nombre + "," + nombre + "," + titulo + "," + anyo;
-			System.out.println( wikiConsulta + nombre + "," + nombre + "," + titulo + "," + anyo );
+			resultado.add( wikiConsulta + nombre + "," + nombre + "," + titulo + "," + anyo );
 			if (anyo.equals(anyModificacion))
 				cambioActual ++;
 			
@@ -168,14 +178,14 @@ public class CercaWiki
 			}
 		return resultado;
 	}
+    
 	/*
 	 * Función encargada de cargar los nombres contenidos en el fichero txt
-	 * 
 	 * @param nombres ArrayList para guardar en memoria los nombres a buscar
 	 * @param urlFicheroIn URL fichero entrada con los nombres
 	 * @return ArrayList con los nombres del fichero cargado
 	 */
-    public static ArrayList cargaNombres( String urlFicheroIn ) {
+    public static ArrayList cargaNombres( String urlFicheroIn ) throws IOException {
 		ArrayList nombres = new ArrayList();
 		FileReader fr = null;
 	    try {
@@ -185,16 +195,17 @@ public class CercaWiki
 	      String linea;
 	      while((linea = br.readLine()) != null) {
 	    	  nombres.add(linea);
-	    	  System.out.println("Nombre: " +linea);
+	    	  //System.out.println("Nombre: " +linea);
 	      }
 	      System.out.println("Numero de nombres cargados " +nombres.size());
 	 
-	      fr.close();
+	      fr.close(); 
 	      
-	    }
-	    catch(Exception e) {
-	      System.out.println("Excepcion leyendo fichero "+ urlFicheroIn + ": " + e);
-	    }
+	    }   
+	    
+	    catch(IOException e) {
+		      throw new IOException(e.toString());
+		}
 	    finally {
 			if (fr != null) {
 				try {
